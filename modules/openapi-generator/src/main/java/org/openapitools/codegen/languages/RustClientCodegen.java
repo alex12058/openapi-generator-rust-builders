@@ -59,7 +59,7 @@ public class RustClientCodegen extends AbstractRustCodegen implements CodegenCon
     @Setter private boolean preferUnsignedInt = false;
     @Setter private boolean bestFitInt = false;
     @Setter private boolean avoidBoxedModels = false;
-    private List<String> reqwestDefaultFeatures = Arrays.asList("native-tls");
+    private List<String> reqwestDefaultFeatures = new ArrayList<>();
 
     public static final String PACKAGE_NAME = "packageName";
     public static final String EXTERN_CRATE_NAME = "externCrateName";
