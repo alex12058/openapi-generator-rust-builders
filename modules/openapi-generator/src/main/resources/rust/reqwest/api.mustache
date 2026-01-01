@@ -83,26 +83,12 @@ impl {{{operationIdCamelCase}}}ParamsBuilder {
     }}{{#isUuid}}{{#isArray}}Vec<{{/isArray}}{{^isArray}}impl Into<String>{{/isArray}}{{#isArray}}String>{{/isArray}}{{/isUuid}}{{!
     ### Models and primitive types
     }}{{^isString}}{{^isUuid}}{{^isPrimitiveType}}{{^isContainer}}models::{{/isContainer}}{{/isPrimitiveType}}{{{dataType}}}{{/isUuid}}{{/isString}}) -> Self {
-        {{#isString}}
-        {{^isArray}}
-        self.{{{paramName}}} = {{^required}}Some({{/required}}{{#required}}{{#isNullable}}Some({{/isNullable}}{{/required}}{{{paramName}}}.into(){{^required}}){{/required}}{{#required}}{{#isNullable}}){{/isNullable}}{{/required}};
-        {{/isArray}}
-        {{#isArray}}
-        self.{{{paramName}}} = {{^required}}Some({{/required}}{{#required}}{{#isNullable}}Some({{/isNullable}}{{/required}}{{{paramName}}}{{^required}}){{/required}}{{#required}}{{#isNullable}}){{/isNullable}}{{/required}};
-        {{/isArray}}
-        {{/isString}}
-        {{#isUuid}}
-        {{^isArray}}
-        self.{{{paramName}}} = {{^required}}Some({{/required}}{{#required}}{{#isNullable}}Some({{/isNullable}}{{/required}}{{{paramName}}}.into(){{^required}}){{/required}}{{#required}}{{#isNullable}}){{/isNullable}}{{/required}};
-        {{/isArray}}
-        {{#isArray}}
-        self.{{{paramName}}} = {{^required}}Some({{/required}}{{#required}}{{#isNullable}}Some({{/isNullable}}{{/required}}{{{paramName}}}{{^required}}){{/required}}{{#required}}{{#isNullable}}){{/isNullable}}{{/required}};
-        {{/isArray}}
-        {{/isUuid}}
-        {{^isString}}{{^isUuid}}
-        self.{{{paramName}}} = {{^required}}Some({{/required}}{{#required}}{{#isNullable}}Some({{/isNullable}}{{/required}}{{{paramName}}}{{^required}}){{/required}}{{#required}}{{#isNullable}}){{/isNullable}}{{/required}};
-        {{/isUuid}}{{/isString}}
-        self
+        {{#isString}}{{^isArray}}self.{{{paramName}}} = {{^required}}Some({{/required}}{{#required}}{{#isNullable}}Some({{/isNullable}}{{/required}}{{{paramName}}}.into(){{^required}}){{/required}}{{#required}}{{#isNullable}}){{/isNullable}}{{/required}};
+        {{/isArray}}{{#isArray}}self.{{{paramName}}} = {{^required}}Some({{/required}}{{#required}}{{#isNullable}}Some({{/isNullable}}{{/required}}{{{paramName}}}{{^required}}){{/required}}{{#required}}{{#isNullable}}){{/isNullable}}{{/required}};
+        {{/isArray}}{{/isString}}{{#isUuid}}{{^isArray}}self.{{{paramName}}} = {{^required}}Some({{/required}}{{#required}}{{#isNullable}}Some({{/isNullable}}{{/required}}{{{paramName}}}.into(){{^required}}){{/required}}{{#required}}{{#isNullable}}){{/isNullable}}{{/required}};
+        {{/isArray}}{{#isArray}}self.{{{paramName}}} = {{^required}}Some({{/required}}{{#required}}{{#isNullable}}Some({{/isNullable}}{{/required}}{{{paramName}}}{{^required}}){{/required}}{{#required}}{{#isNullable}}){{/isNullable}}{{/required}};
+        {{/isArray}}{{/isUuid}}{{^isString}}{{^isUuid}}self.{{{paramName}}} = {{^required}}Some({{/required}}{{#required}}{{#isNullable}}Some({{/isNullable}}{{/required}}{{{paramName}}}{{^required}}){{/required}}{{#required}}{{#isNullable}}){{/isNullable}}{{/required}};
+        {{/isUuid}}{{/isString}}self
     }
 {{/allParams}}
 
