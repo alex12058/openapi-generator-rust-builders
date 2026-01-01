@@ -19,7 +19,7 @@ use tokio_util::codec::{BytesCodec, FramedRead};
 {{#allParams}}
 {{#-first}}
 /// struct for passing parameters to the method [`{{operationId}}`]
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct {{{operationIdCamelCase}}}Params {
 {{/-first}}
     {{#description}}
