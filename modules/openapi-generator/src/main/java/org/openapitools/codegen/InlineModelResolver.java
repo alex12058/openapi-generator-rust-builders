@@ -587,8 +587,15 @@ public class InlineModelResolver {
             String key = responsesEntry.getKey();
             ApiResponse response = responsesEntry.getValue();
 
-            flattenContent(response.getContent(),
-                    (operation.getOperationId() == null ? modelName : operation.getOperationId()) + "_" + key + "_response");
+            // For 200 responses, omit the status code from the name (200 is implicit for successful responses)
+            String responseName;
+            if ("200".equals(key)) {
+                responseName = (operation.getOperationId() == null ? modelName : operation.getOperationId()) + "_response";
+            } else {
+                responseName = (operation.getOperationId() == null ? modelName : operation.getOperationId()) + "_" + key + "_response";
+            }
+
+            flattenContent(response.getContent(), responseName);
         }
     }
 
