@@ -496,7 +496,7 @@ public class InlineModelResolver {
             if (schema == null) {
                 continue;
             }
-            String schemaName = resolveModelName(schema.getTitle(), name); // name example: testPost_request
+            String schemaName = resolveModelName(schema.getTitle(), name, schema); // name example: testPost_request
             // Recursively gather/make inline models within this schema if any
             gatherInlineModels(schema, schemaName);
             if (isModelNeeded(schema)) {
@@ -738,17 +738,23 @@ public class InlineModelResolver {
      *
      * @param title     String title field in the schema if present
      * @param modelName String model name
+     * @param schema    Schema object to check if it's a oneOf/anyOf for better naming
      * @return if provided the sanitized {@code title}, else the sanitized {@code key}
      */
-    private String resolveModelName(String title, String modelName) {
+    private String resolveModelName(String title, String modelName, Schema schema) {
         if (title == null || "".equals(sanitizeName(title).replace("_", ""))) {
             if (modelName == null) {
-                return uniqueName("inline_object");
+                return uniqueName("inline_object", schema);
             }
-            return uniqueName(sanitizeName(modelName));
+            return uniqueName(sanitizeName(modelName), schema);
         } else {
-            return uniqueName(sanitizeName(title));
+            return uniqueName(sanitizeName(title), schema);
         }
+    }
+    
+    // Backwards compatibility
+    private String resolveModelName(String title, String modelName) {
+        return resolveModelName(title, modelName, null);
     }
 
     private String matchGenerated(Schema model) {
@@ -796,6 +802,10 @@ public class InlineModelResolver {
      * @param name name to be processed to make sure it's unique
      */
     private String uniqueName(final String name) {
+        return uniqueName(name, null);
+    }
+    
+    private String uniqueName(final String name, final Schema schema) {
         if (openAPI.getComponents().getSchemas() == null) { // no schema has been created
             return name;
         }
@@ -806,7 +816,16 @@ public class InlineModelResolver {
             if (!openAPI.getComponents().getSchemas().containsKey(uniqueName) && !uniqueNames.contains(uniqueName)) {
                 return uniqueName;
             }
-            uniqueName = name + "_" + ++count;
+            
+            // For response oneOf/anyOf schemas, use "Enum" suffix instead of numeric
+            // e.g., GetTimeSeries_200_response becomes GetTimeSeries_200_responseEnum
+            // Pattern matches names ending with digits followed by "response" (case-insensitive)
+            if (count == 0 && schema != null && name.matches("(?i).*\\d+_response$") && 
+                (schema.getOneOf() != null || schema.getAnyOf() != null)) {
+                return uniqueName(name + "Enum", schema);
+            } else {
+                uniqueName = name + "_" + ++count;
+            }
         }
     }
 
