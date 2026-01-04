@@ -320,7 +320,7 @@ pub {{#supportAsync}}async {{/supportAsync}}fn {{{operationId}}}(configuration: 
         req_builder = req_builder.query(&[("{{{baseName}}}", &serde_json::to_string(param_value)?)]);
         {{/isModel}}
         {{#isEnum}}
-        req_builder = req_builder.query(&[("{{{baseName}}}", &serde_json::to_string(param_value)?)]);
+        req_builder = req_builder.query(&[("{{{baseName}}}", &param_value.to_string())]);
         {{/isEnum}}
         {{^isObject}}
         {{^isModel}}
@@ -612,10 +612,10 @@ pub {{#supportAsync}}async {{/supportAsync}}fn {{{operationId}}}(configuration: 
             ContentType::Json => serde_path_to_error::deserialize(&mut serde_json::Deserializer::from_str(&content)).map_err(Error::from),
             {{/useSerdePathToError}}
             {{#vendorExtensions.x-supports-plain-text}}
-            ContentType::Text => return Ok(content),
+            ContentType::Text => return Ok({{{returnType}}}::Text(content)),
             {{/vendorExtensions.x-supports-plain-text}}
             {{^vendorExtensions.x-supports-plain-text}}
-            ContentType::Text => return Err(Error::from(serde_json::Error::custom("Received `text/plain` content type response that cannot be converted to `{{returnType}}`"))),
+            ContentType::Text => return Err(Error::from(serde_json::Error::custom("Received `text/*` content type response that cannot be converted to `{{returnType}}`"))),
             {{/vendorExtensions.x-supports-plain-text}}
             ContentType::Unsupported(unknown_type) => return Err(Error::from(serde_json::Error::custom(format!("Received `{unknown_type}` content type response that cannot be converted to `{{returnType}}`")))),
         }

@@ -103,6 +103,10 @@ pub enum {{{classname}}} {
     {{/baseName}}
     {{{name}}}({{#isModel}}{{^avoidBoxedModels}}Box<{{/avoidBoxedModels}}{{/isModel}}{{{dataType}}}{{#isModel}}{{^avoidBoxedModels}}>{{/avoidBoxedModels}}{{/isModel}}),
     {{/composedSchemas.oneOf}}
+    {{#vendorExtensions.x-supports-plain-text}}
+    /// String variant for text/* content types (e.g., text/csv, text/plain)
+    Text(String),
+    {{/vendorExtensions.x-supports-plain-text}}
     {{/oneOf.isEmpty}}
 }
 
@@ -187,6 +191,10 @@ pub enum {{classname}} {
     {{/description}}
     {{{name}}}({{#isModel}}{{^avoidBoxedModels}}Box<{{/avoidBoxedModels}}{{/isModel}}{{{dataType}}}{{#isModel}}{{^avoidBoxedModels}}>{{/avoidBoxedModels}}{{/isModel}}),
 {{/composedSchemas.oneOf}}
+{{#vendorExtensions.x-supports-plain-text}}
+    /// String variant for text/* content types (e.g., text/csv, text/plain)
+    Text(String),
+{{/vendorExtensions.x-supports-plain-text}}
 }
 
 impl Default for {{classname}} {

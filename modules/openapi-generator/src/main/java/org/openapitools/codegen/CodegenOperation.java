@@ -361,16 +361,16 @@ public class CodegenOperation {
     }
 
     /**
-     * Check if operation produces text/plain responses.
-     * NOTE: This does not mean it _only_ produces text/plain, just that it is one of the produces types.
+     * Check if operation produces text/* responses (text/plain, text/csv, text/html, etc.).
+     * NOTE: This does not mean it _only_ produces text/*, just that it is one of the produces types.
      *
-     * @return true if at least one produces is text/plain
+     * @return true if at least one produces is text/*
      */
     public boolean producesTextPlain() {
         if (produces != null) {
             for (Map<String, String> produce : produces) {
-                if ("text/plain".equalsIgnoreCase(produce.get("mediaType").split(";")[0].trim())
-                        && "String".equals(returnType)) {
+                String mediaType = produce.get("mediaType");
+                if (mediaType != null && mediaType.split(";")[0].trim().toLowerCase(Locale.ROOT).startsWith("text/")) {
                     return true;
                 }
             }

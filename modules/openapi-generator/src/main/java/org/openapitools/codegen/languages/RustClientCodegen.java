@@ -21,8 +21,14 @@ import com.google.common.collect.ImmutableMap;
 import com.samskivert.mustache.Mustache;
 import com.samskivert.mustache.Mustache.Lambda;
 import com.samskivert.mustache.Template;
+import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.Operation;
+import io.swagger.v3.oas.models.PathItem;
 import io.swagger.v3.oas.models.media.Discriminator;
+import io.swagger.v3.oas.models.media.MediaType;
 import io.swagger.v3.oas.models.media.Schema;
+import io.swagger.v3.oas.models.responses.ApiResponse;
+import io.swagger.v3.oas.models.servers.Server;
 import io.swagger.v3.parser.util.SchemaTypeUtil;
 import joptsimple.internal.Strings;
 import lombok.AccessLevel;
@@ -251,8 +257,62 @@ public class RustClientCodegen extends AbstractRustCodegen implements CodegenCon
     }
 
     @Override
+    public CodegenOperation fromOperation(String path, String httpMethod, Operation operation, List<Server> servers) {
+        CodegenOperation op = super.fromOperation(path, httpMethod, operation, servers);
+        
+        // Check if the operation produces both JSON and text/* content types
+        // If so, mark the response schema with x-supports-plain-text extension
+        if (operation.getResponses() != null) {
+            boolean hasTextContent = false;
+            boolean hasJsonContent = false;
+            
+            for (ApiResponse response : operation.getResponses().values()) {
+                ApiResponse resolvedResponse = ModelUtils.getReferencedApiResponse(openAPI, response);
+                if (resolvedResponse.getContent() != null) {
+                    for (String contentType : resolvedResponse.getContent().keySet()) {
+                        String normalized = contentType.split(";")[0].trim().toLowerCase(Locale.ROOT);
+                        if (normalized.startsWith("text/")) {
+                            hasTextContent = true;
+                        } else if (normalized.equals("application/json")) {
+                            hasJsonContent = true;
+                        }
+                    }
+                }
+            }
+            
+            // If we have both text and JSON content, mark the response schema
+            if (hasTextContent && hasJsonContent) {
+                for (ApiResponse response : operation.getResponses().values()) {
+                    ApiResponse resolvedResponse = ModelUtils.getReferencedApiResponse(openAPI, response);
+                    if (resolvedResponse.getContent() != null) {
+                        MediaType jsonMedia = resolvedResponse.getContent().get("application/json");
+                        if (jsonMedia != null && jsonMedia.getSchema() != null) {
+                            Schema schema = ModelUtils.getReferencedSchema(openAPI, jsonMedia.getSchema());
+                            if (schema != null && schema.getExtensions() == null) {
+                                schema.setExtensions(new java.util.HashMap<>());
+                            }
+                            if (schema != null && schema.getExtensions() != null) {
+                                schema.addExtension("x-supports-plain-text", Boolean.TRUE);
+                                LOGGER.info("Marked schema for operation " + op.operationId + " with x-supports-plain-text");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        return op;
+    }
+
+    @Override
     public CodegenModel fromModel(String name, Schema model) {
         CodegenModel mdl = super.fromModel(name, model);
+        
+        // Check if the schema has x-supports-plain-text extension (set during operation processing)
+        if (model.getExtensions() != null && Boolean.TRUE.equals(model.getExtensions().get("x-supports-plain-text"))) {
+            mdl.vendorExtensions.put("x-supports-plain-text", Boolean.TRUE);
+            LOGGER.info("Model '" + name + "' supports plain text responses (from schema extension)");
+        }
 
         // set correct names and baseNames to oneOf in composed-schema to use as enum variant names & mapping
         if (mdl.getComposedSchemas() != null && mdl.getComposedSchemas().getOneOf() != null
@@ -371,6 +431,72 @@ public class RustClientCodegen extends AbstractRustCodegen implements CodegenCon
         }
         // process enum in models
         return postProcessModelsEnum(objs);
+    }
+
+    @Override
+    public void preprocessOpenAPI(OpenAPI openAPI) {
+        super.preprocessOpenAPI(openAPI);
+        
+        // Pre-process operations to mark schemas that support both JSON and text/* responses
+        if (openAPI.getPaths() != null) {
+            for (PathItem path : openAPI.getPaths().values()) {
+                for (Operation operation : getOperationsFromPath(path)) {
+                    if (operation.getResponses() != null) {
+                        boolean hasTextContent = false;
+                        boolean hasJsonContent = false;
+                        
+                        // Check what content types this operation produces
+                        for (ApiResponse response : operation.getResponses().values()) {
+                            ApiResponse resolvedResponse = ModelUtils.getReferencedApiResponse(openAPI, response);
+                            if (resolvedResponse.getContent() != null) {
+                                for (String contentType : resolvedResponse.getContent().keySet()) {
+                                    String normalized = contentType.split(";")[0].trim().toLowerCase(Locale.ROOT);
+                                    if (normalized.startsWith("text/")) {
+                                        hasTextContent = true;
+                                    } else if (normalized.equals("application/json")) {
+                                        hasJsonContent = true;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // If we have both text and JSON content, mark the JSON response schema
+                        if (hasTextContent && hasJsonContent) {
+                            for (ApiResponse response : operation.getResponses().values()) {
+                                ApiResponse resolvedResponse = ModelUtils.getReferencedApiResponse(openAPI, response);
+                                if (resolvedResponse.getContent() != null) {
+                                    MediaType jsonMedia = resolvedResponse.getContent().get("application/json");
+                                    if (jsonMedia != null && jsonMedia.getSchema() != null) {
+                                        Schema schema = ModelUtils.getReferencedSchema(openAPI, jsonMedia.getSchema());
+                                        if (schema != null) {
+                                            if (schema.getExtensions() == null) {
+                                                schema.setExtensions(new java.util.HashMap<>());
+                                            }
+                                            schema.addExtension("x-supports-plain-text", Boolean.TRUE);
+                                            LOGGER.info("Marked schema '" + schema.getName() + "' with x-supports-plain-text extension");
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Helper method to get all operations from a path
+    private List<Operation> getOperationsFromPath(PathItem path) {
+        List<Operation> operations = new ArrayList<>();
+        if (path.getGet() != null) operations.add(path.getGet());
+        if (path.getPost() != null) operations.add(path.getPost());
+        if (path.getPut() != null) operations.add(path.getPut());
+        if (path.getDelete() != null) operations.add(path.getDelete());
+        if (path.getPatch() != null) operations.add(path.getPatch());
+        if (path.getOptions() != null) operations.add(path.getOptions());
+        if (path.getHead() != null) operations.add(path.getHead());
+        if (path.getTrace() != null) operations.add(path.getTrace());
+        return operations;
     }
 
     @Override
@@ -763,8 +889,23 @@ public class RustClientCodegen extends AbstractRustCodegen implements CodegenCon
                 operation.vendorExtensions.put("x-group-parameters", Boolean.TRUE);
             }
 
-            if (operation.producesTextPlain() && "String".equals(operation.returnType)) {
+            // Mark operations that produce both JSON and text/* responses
+            // This is used to generate the Text(String) variant in oneOf enums
+            if (operation.producesTextPlain()) {
                 operation.vendorExtensions.put("x-supports-plain-text", Boolean.TRUE);
+                
+                // Also mark the return type model with the vendor extension
+                if (operation.returnType != null && !operation.returnType.equals("String")) {
+                    for (ModelMap modelMap : allModels) {
+                        CodegenModel model = modelMap.getModel();
+                        // Check if this model matches the operation's return type
+                        if (model.classname.equals(operation.returnType)) {
+                            model.vendorExtensions.put("x-supports-plain-text", Boolean.TRUE);
+                            LOGGER.info("Marking model '" + model.classname + "' as supporting plain text responses");
+                            break;
+                        }
+                    }
+                }
             }
 
             // update return type to conform to rust standard
